@@ -3,70 +3,84 @@ import "./App.css";
 
 function App() {
   const [notifications, setNotifications] = useState([]);
-  const [showPanel, setShowPanel] = useState(false);
   const userId = "user1";
 
-  useEffect(() => {
-    const ws = new WebSocket(`ws://127.0.0.1:8000/ws/${userId}`);
+  // ✅ Detect environment (local vs deployed)
+  const WS_URL =
+    window.location.hostname === "localhost"
+      ? `ws://127.0.0.1:8000/ws/${userId}`
+      : `wss://smart-notification-backend.onrender.com/ws/${userId}`;
 
-    ws.onopen = () => console.log("Connected to backend");
+  const API_URL =
+    window.location.hostname === "localhost"
+      ? `http://127.0.0.1:8000/send/${userId}`
+      : `https://smart-notification-backend.onrender.com/send/${userId}`;
+
+  useEffect(() => {
+    const ws = new WebSocket(WS_URL);
+
+    ws.onopen = () => {
+      console.log("✅ WebSocket connected");
+    };
 
     ws.onmessage = (event) => {
+      console.log("📩 Message received:", event.data);
+
       const data = JSON.parse(event.data);
 
       setNotifications((prev) => {
+        // جلوگیری duplicates
         if (prev.find((n) => n.id === data.id)) return prev;
-        return [data, ...prev]; // newest on top
+        return [...prev, data];
       });
     };
 
-    return () => ws.close();
+    ws.onerror = (err) => {
+      console.log("❌ WebSocket error:", err);
+    };
+
+    ws.onclose = () => {
+      console.log("⚠️ WebSocket closed");
+    };
+
+    return () => {
+      ws.close();
+    };
   }, []);
 
-  // grouping
-  const grouped = {};
-  notifications.forEach((n) => {
-    grouped[n.message] = (grouped[n.message] || 0) + 1;
-  });
+  // Send notification
+  const sendNotification = async () => {
+    console.log("Button clicked");
 
-  const unreadCount = notifications.length;
+    try {
+      const res = await fetch(`${API_URL}?message=Assignment Updated`, {
+        method: "POST",
+      });
+
+      const data = await res.json();
+      console.log("Response:", data);
+    } catch (err) {
+      console.log("Error sending:", err);
+    }
+  };
 
   return (
-    <div className="container">
-      <h1>Smart Notification System</h1>
+    <div className="App">
+      <h1>🔔 Smart Notification System</h1>
 
-      {/* 🔔 Bell */}
-      <div className="bell" onClick={() => setShowPanel(!showPanel)}>
-        🔔
-        {unreadCount > 0 && <span className="badge">{unreadCount}</span>}
-      </div>
+      <button onClick={sendNotification}>Send Notification</button>
 
-      {/* Button */}
-      <button
-        onClick={async () => {
-          await fetch(
-            "http://127.0.0.1:8000/send/user1?message=Assignment Updated",
-            { method: "POST" }
-          );
-        }}
-      >
-        Send Notification
-      </button>
-
-      {/* Dropdown Panel */}
-      {showPanel && (
-        <div className="panel">
-          <h3>Notifications</h3>
-
-          {Object.keys(grouped).length === 0 && <p>No notifications</p>}
-
-          {Object.keys(grouped).map((msg, i) => (
-            <div key={i} className="notif">
-              {msg} {grouped[msg] > 1 && `(${grouped[msg]} times)`}
+      <div className="notifications">
+        {notifications.length === 0 ? (
+          <p>No notifications yet</p>
+        ) : (
+          notifications.map((n) => (
+            <div key={n.id} className="notification">
+              {n.message}
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 }
