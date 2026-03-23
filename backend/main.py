@@ -12,7 +12,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+@app.get("/")
+def home():
+    return {"status": "Backend is working"}
 # Store connections + notifications
 connected_users: Dict[str, WebSocket] = {}
 notifications_db: Dict[str, List[dict]] = {}
