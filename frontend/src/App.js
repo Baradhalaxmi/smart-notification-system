@@ -6,17 +6,13 @@ function App() {
   const [message, setMessage] = useState("");
   const userId = "user1";
 
-  const WS_URL =
-    window.location.hostname === "localhost"
-      ? `ws://127.0.0.1:8000/ws/${userId}`
-      : `wss://smart-notification-backend.onrender.com/ws/${userId}`;
-
-  const API_URL =
-    window.location.hostname === "localhost"
-      ? `http://127.0.0.1:8000/send/${userId}`
-      : `https://smart-notification-backend.onrender.com/send/${userId}`;
+  // ✅ FIXED URLs (ONLY production)
+  const WS_URL = `wss://smart-notification-backend.onrender.com/ws/${userId}`;
+  const API_URL = `https://smart-notification-backend.onrender.com/send/${userId}`;
 
   useEffect(() => {
+    console.log("Connecting to:", WS_URL);
+
     const ws = new WebSocket(WS_URL);
 
     ws.onopen = () => {
@@ -45,6 +41,8 @@ function App() {
   const sendNotification = async () => {
     if (!message) return;
 
+    console.log("Sending:", message);
+
     try {
       const res = await fetch(`${API_URL}?message=${message}`, {
         method: "POST",
@@ -63,17 +61,28 @@ function App() {
     <div className="App">
       <h1>🔔 Smart Notification System</h1>
 
+      {/* ✅ Input Box */}
       <input
         type="text"
         placeholder="Enter notification..."
         value={message}
         onChange={(e) => setMessage(e.target.value)}
+        style={{
+          padding: "10px",
+          width: "250px",
+          borderRadius: "5px",
+          border: "1px solid #ccc",
+        }}
       />
 
       <br /><br />
 
+      {/* ✅ Send Button */}
       <button onClick={sendNotification}>Send Notification</button>
 
+      <br /><br />
+
+      {/* ✅ Notifications */}
       <div className="notifications">
         {notifications.length === 0 ? (
           <p>No notifications yet</p>
